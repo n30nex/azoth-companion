@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "AzothCompanionRecorder",
+  "outputfilename": "AzothCapture.Companion",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "tempesTT",
+    "email": "130147591+KyzaBOY@users.noreply.github.com"
+  },
+  "info": {
+    "companyName": "Unofficial community tools",
+    "productName": "Azoth Companion Recorder",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright tempesTT; integration by n30nex. Unofficial; New World is an Amazon trademark.",
+    "comments": "Azoth Capture 0.2.0 integration with a local collection guide. See the repository for source and notices."
+  }
+}

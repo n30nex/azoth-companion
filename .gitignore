@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+.venv/
+AzothCapture/
+artifacts/
+local-state/
+*.exe
+*.syso
+*.zip
+*.bin
+*.log
+*.dmp
+*.keylog
+*.pem
+*.key
+.downloads/
+.runtime-ready.json
+recorder/build/bin/
+AzothCompanion/menu-templates/
+access.json
+dashboard-bridge.json
+draft.json
+uploads.json
+Phone connection.txt

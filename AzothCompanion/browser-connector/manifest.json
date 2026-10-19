@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Azoth Companion Upload Connector",
+  "version": "0.1.0",
+  "description": "Send this PC's prepared Azoth captures through your existing signed-in Azoth upload page.",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://projectazoth.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Azoth automatic uploads"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://projectazoth.com/upload*"
+      ],
+      "js": [
+        "upload-page.js"
+      ]
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxSp2n4qNySzUp80sz+Qfqv1pHSIq92K3TVADy9KtAZzpyU8AmQIQnlS8BBI34Jxt7pxZI05mBac38YYIJFMT03oXvt3odtacravpWEfVFXjqMoqHudeu/q06Zl795OGoXBw9mOQ4I3IenSiD2D8cBcJ0e47v850Q8CqKEuYGq+RHmm7Wk8d3O0cTVfQDEBt1jIPQzfnsdNDFhPs5OF8qMKqpUgPQb6lOoMwqpUzkeyxesmViGx3+EzMbC6LwyHETessDTTC7KKtYsbAjh1UHhtFTpZfyq6gnGfwukCLN74MIPQ+4yWei/PKH2B9NULjav5XOJ8iejGiKivNRWP2tiwIDAQAB"
+}

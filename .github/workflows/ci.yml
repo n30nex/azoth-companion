@@ -1,0 +1,82 @@
+name: Windows build and checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+        with:
+          go-version-file: recorder/go.mod
+          cache-dependency-path: recorder/go.sum
+      - name: Check public source
+        run: python scripts/check_public_tree.py
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $parseErrors = $null
+            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$null,[ref]$parseErrors)
+            if ($parseErrors) { $parseErrors | Format-List; throw "Invalid script: $($_.Name)" }
+          }
+      - name: Native checks and build
+        working-directory: recorder
+        shell: pwsh
+        run: |
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          wails build -platform windows/amd64 -trimpath -o AzothCapture.Companion.exe
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Fresh runtime installation
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path AzothCapture -Force | Out-Null
+          Copy-Item recorder/internal/capture/embed/install_env.ps1,recorder/internal/capture/embed/downloads.json,recorder/internal/capture/embed/requirements-extra.txt AzothCapture
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File AzothCapture/install_env.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Companion, connector and clean-profile checks
+        shell: pwsh
+        run: |
+          $python = Join-Path $PWD 'AzothCapture/python_embedded/python.exe'
+          foreach ($test in @('test_durability','test_skip','test_continuous','test_controls','test_validation','test_public','test_game_ui')) {
+            & $python "AzothCompanion/$test.py"
+            if ($LASTEXITCODE -ne 0) { throw "$test failed" }
+          }
+          & $python scripts/test_clean_profile.py
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node --check AzothCompanion/dist/app.js
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          node AzothCompanion/test_connector.js
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Launcher and overlay construction
+        shell: pwsh
+        run: |
+          $env:AZOTH_COMPANION_DATA = Join-Path $env:RUNNER_TEMP 'azoth-smoke-profile'
+          $env:AZOTH_CAPTURE_DATA = Join-Path $env:AZOTH_COMPANION_DATA 'recorder'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File Start-Azoth.ps1 -NoLaunch
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          @{host='127.0.0.1';port=1;token='synthetic-test-cookie'} | ConvertTo-Json | Set-Content (Join-Path $env:AZOTH_COMPANION_DATA 'access.json')
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File AzothCompanion/Overlay.ps1 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Package
+        run: python scripts/package_release.py --exe recorder/build/bin/AzothCapture.Companion.exe --version 0.1.0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: AzothCompanion-windows-x64
+          path: artifacts/*
+          if-no-files-found: error
