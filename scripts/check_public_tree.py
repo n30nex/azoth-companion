@@ -22,6 +22,8 @@ for name in filter(None,tracked):
     if path.name in denied_names or path.suffix.lower() in denied_suffixes or '/menu-templates/' in name or name.startswith('AzothCapture/'):
         failures.append((name,'runtime/private file'));continue
     data=path.read_bytes()
+    if path.suffix.lower() not in {'.png','.ico','.woff2'} and b'\x00' in data:
+        failures.append((name,'damaged text file containing NUL bytes'))
     if any(pattern.search(data) for pattern in patterns):failures.append((name,'credential or user-home path'))
     if any(value.encode() in data for value in sentinels if value):failures.append((name,'private local identifier'))
 if failures:
