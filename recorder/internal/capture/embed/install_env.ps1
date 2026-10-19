@@ -68,9 +68,16 @@ try {
 $requirements = Join-Path $engineCode 'requirements.txt'
 if (-not (Test-Path -LiteralPath $requirements)) { throw 'Pinned engine archive is incomplete.' }
 Write-Output 'Installing pinned capture and menu-helper packages from PyPI...'
-& $python -m pip --isolated install --index-url https://pypi.org/simple --disable-pip-version-check --no-warn-script-location --no-cache-dir -r $requirements -r (Join-Path $runtimeRoot 'requirements-extra.txt')
+# Embedded Python ignores the temporary PYTHONPATH used by isolated source builds.
+# Install the build backend into this private runtime before building frida-tools.
+$extraRequirements = Join-Path $runtimeRoot 'requirements-extra.txt'
+$buildRequirements = @(Get-Content -LiteralPath $extraRequirements | Where-Object { $_ -match '^(setuptools|wheel)==' })
+if ($buildRequirements.Count -ne 2) { throw 'Missing pinned Python build requirements.' }
+& $python -m pip --isolated install --index-url https://pypi.org/simple --disable-pip-version-check --no-warn-script-location --no-cache-dir --only-binary=:all: @buildRequirements
+if ($LASTEXITCODE -ne 0) { throw 'Python build backend installation failed.' }
+& $python -m pip --isolated install --index-url https://pypi.org/simple --disable-pip-version-check --no-warn-script-location --no-cache-dir --no-build-isolation --check-build-dependencies -r $requirements -r $extraRequirements
 if ($LASTEXITCODE -ne 0) { throw 'Python package installation failed. Use Install in the recorder to retry.' }
-& $python -c 'import frida, cv2, numpy; from PIL import Image; print("Capture runtime verified.")'
+& $python -c "import frida, cv2, numpy; from PIL import Image; print('Capture runtime verified.')"
 if ($LASTEXITCODE -ne 0) { throw 'Capture runtime validation failed.' }
 @{engine_commit=$lock.engine_commit;python_version=$lock.python_version;companion='0.1.0'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runtimeRoot '.runtime-ready.json') -Encoding utf8
 Write-Output 'Runtime setup complete.'
